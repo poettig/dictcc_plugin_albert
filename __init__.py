@@ -197,6 +197,7 @@ def handleQuery(query):
         result = Dict.translate(txt, src, dst)
         items = []
         for input_word, output_word in result.translation_tuples:
+            critical(input_word + " | " + output_word)
             # Select correct value as translation
             # Dict.cc can only do <any language> <-> German or English
             # If src->dst are de->en or en->de, de is always the output
@@ -226,17 +227,17 @@ def handleQuery(query):
             item.addAction(ClipAction("Copy translation to clipboard", output))
             items.append(item)
 
-        # Add URL entry
-        item = Item(id=__prettyname__, icon=iconPath, completion=query.rawString)
-        item.addAction(UrlAction("Open dict.cc", result.request_url))
-        item.text = "Show all results (opens browser)"
-        item.subtext = "Tip: You can scroll Alberts result list with your arrow keys to show more results."
-        items.insert(0, item)
-
         # If there where no results
         if len(items) == 0:
             item = Item(id=__prettyname__, icon=iconPath, completion=query.rawString)
             item.text = "No results found!"
             items.append(item)
+        else:
+            # Add URL entry
+            item = Item(id=__prettyname__, icon=iconPath, completion=query.rawString)
+            item.addAction(UrlAction("Open dict.cc", result.request_url))
+            item.text = "Show all results (opens browser)"
+            item.subtext = "Tip: You can scroll Alberts result list with your arrow keys to show more results."
+            items.insert(0, item)
 
         return items
