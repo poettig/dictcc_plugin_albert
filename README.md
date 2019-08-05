@@ -10,6 +10,9 @@ Dict.cc is a cross-language dictionary that can translate English and German in 
 ## How To Install
 Just clone this project into `~/.local/share/albert/org.albert.extension.python/modules/` and activate it under Extensions->Python in the Albert settings.
 
+## Issues
+If you find an issue with the plugin, please submit an issue in the issue tracker including the query you made and all other information about what you did that you think might useful to me.
+
 ## Attributions
 Thanks to Manuel Schneider for developing Albert and his great work. It was exactly what I missed from the Cinnamon menu search!
 
