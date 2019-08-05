@@ -7,3 +7,6 @@
 *.iml
 out
 gen
+
+# OWN STUFF
+__pycache__/
