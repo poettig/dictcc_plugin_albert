@@ -12,20 +12,13 @@ Example: cc en fr hello
 import os
 import requests
 
-try:
-    from bs4 import BeautifulSoup
-except ImportError:
-    from BeautifulSoup import BeautifulSoup
-    BeautifulSoup.find_all = BeautifulSoup.findAll
+from bs4 import BeautifulSoup
+from albert import Item, critical, ClipAction, UrlAction
 
-from albertv0 import *
-
-__iid__ = "PythonInterface/v0.1"
-__prettyname__ = "Dict.cc Translator"
-__version__ = "1.0"
-__trigger__ = "cc "
-__author__ = "Peter Oettig"
-__dependencies__ = []
+__title__ = "Dict.cc Translator"
+__version__ = "0.4.1"
+__triggers__ = "cc "
+__authors__ = "Peter Oettig"
 
 iconPath = "%s/icon.png" % (os.path.dirname(__file__))
 if not os.path.isfile(iconPath):
@@ -179,25 +172,25 @@ def handleQuery(query):
                     dst = "en"
                     txt = " ".join(fields)
                 elif src not in ["de", "en"] and dst not in ["de", "en"]:
-                    item = Item(id=__prettyname__, icon=iconPath, completion=query.rawString)
+                    item = Item(id=__title__, icon=iconPath, completion=query.rawString)
                     item.text = "Unsupported language combination!"
                     item.subtext = "One language must be one of ['en', 'de']."
                     return item
                 elif src not in AVAILABLE_LANGUAGES or dst not in AVAILABLE_LANGUAGES:
-                    item = Item(id=__prettyname__, icon=iconPath, completion=query.rawString)
+                    item = Item(id=__title__, icon=iconPath, completion=query.rawString)
                     item.text = "Unsupported language!"
                     item.subtext = "Source and destination language must be one of %s." % [x for x in AVAILABLE_LANGUAGES.keys()]
                     return item
         else:
-            item = Item(id=__prettyname__, icon=iconPath, completion=query.rawString)
-            item.text = __prettyname__
+            item = Item(id=__title__, icon=iconPath, completion=query.rawString)
+            item.text = __title__
             item.subtext = "Enter a query in the form of \"&lt;srclang&gt; &lt;dstlang&gt; &lt;text&gt;\""
             return item
 
         result = Dict.translate(txt, src, dst)
         items = []
         for input_word, output_word in result.translation_tuples:
-            critical(input_word + " | " + output_word)
+            # critical(input_word + " | " + output_word)
             # Select correct value as translation
             # Dict.cc can only do <any language> <-> German or English
             # If src->dst are de->en or en->de, de is always the output
@@ -221,7 +214,7 @@ def handleQuery(query):
             else:
                 inp, output = error_text
 
-            item = Item(id=__prettyname__, icon=iconPath, completion=query.rawString)
+            item = Item(id=__title__, icon=iconPath, completion=query.rawString)
             item.text = output
             item.subtext = "%s->%s translation of '%s'" % (src, dst, inp)
             item.addAction(ClipAction("Copy translation to clipboard", output))
@@ -229,12 +222,12 @@ def handleQuery(query):
 
         # If there where no results
         if len(items) == 0:
-            item = Item(id=__prettyname__, icon=iconPath, completion=query.rawString)
+            item = Item(id=__title__, icon=iconPath, completion=query.rawString)
             item.text = "No results found!"
             items.append(item)
         else:
             # Add URL entry
-            item = Item(id=__prettyname__, icon=iconPath, completion=query.rawString)
+            item = Item(id=__title__, icon=iconPath, completion=query.rawString)
             item.addAction(UrlAction("Open dict.cc", result.request_url))
             item.text = "Show all results (opens browser)"
             item.subtext = "Tip: You can scroll Alberts result list with your arrow keys to show more results."
