@@ -11,16 +11,19 @@ Example: cc en fr hello
 
 import os
 import requests
+import albert
 
 from bs4 import BeautifulSoup
-from albert import Item, critical, ClipAction, UrlAction
 
-__title__ = "Dict.cc Translator"
-__version__ = "0.4.1"
-__triggers__ = "cc "
-__authors__ = "Peter Oettig"
+md_iid = "0.5"
+md_version = "0.5"
+md_name = "Dict.cc Dictionary Lookups"
+md_description = "Look up words in the dict.cc dictionary"
+md_maintainers = "Peter Oettig"
+md_lib_dependencies = ["beautifulsoup4"]
 
-iconPath = "%s/icon.png" % (os.path.dirname(__file__))
+iconPath = f"{os.path.dirname(__file__)}/icon.png"
+albert.info(iconPath)
 if not os.path.isfile(iconPath):
     iconPath = ":python_module"
 
@@ -43,8 +46,7 @@ AVAILABLE_LANGUAGES = {
 
 class UnavailableLanguageError(Exception):
     def __str__(self):
-        return "Languages have to be in the following list: {}".format(
-            ", ".join(AVAILABLE_LANGUAGES.keys()))
+        return f"Languages have to be in the following list: {', '.join(AVAILABLE_LANGUAGES.keys())}"
 
 
 class Result(object):
@@ -144,8 +146,23 @@ def resolve(from_lang, to_lang, input_word, output_word, reference, is_source):
     return inp, output
 
 
-def handleQuery(query):
-    if query.isTriggered:
+class Plugin(albert.QueryHandler):
+    def id(self):
+        return __name__
+
+    def name(self):
+        return md_name
+
+    def description(self):
+        return md_description
+
+    def synopsis(self):
+        return "<srclang> <dstlang> <text>"
+
+    def defaultTrigger(self):
+        return "cc "
+
+    def handleQuery(self, query):
         fields = query.string.split()
         if len(fields) == 1:
             src = "de"
@@ -172,24 +189,31 @@ def handleQuery(query):
                     dst = "en"
                     txt = " ".join(fields)
                 elif src not in ["de", "en"] and dst not in ["de", "en"]:
-                    item = Item(id=__title__, icon=iconPath, completion=query.rawString)
-                    item.text = "Unsupported language combination!"
-                    item.subtext = "One language must be one of ['en', 'de']."
-                    return item
+                    query.add(
+                        albert.Item(
+                            id="unsupported_lang_combination",
+                            icon=[iconPath],
+                            text="Unsupported language combination!",
+                            subtext="One language must be one of ['en', 'de']."
+                        )
+                    )
+                    return
                 elif src not in AVAILABLE_LANGUAGES or dst not in AVAILABLE_LANGUAGES:
-                    item = Item(id=__title__, icon=iconPath, completion=query.rawString)
-                    item.text = "Unsupported language!"
-                    item.subtext = "Source and destination language must be one of %s." % [x for x in AVAILABLE_LANGUAGES.keys()]
-                    return item
+                    query.add(
+                        albert.Item(
+                            id="unsupported_language",
+                            icon=[iconPath],
+                            text="Unsupported language!",
+                            subtext=f"Source and destination language must be one of {[x for x in AVAILABLE_LANGUAGES.keys()]}."
+                        )
+                    )
+                    return
         else:
-            item = Item(id=__title__, icon=iconPath, completion=query.rawString)
-            item.text = __title__
-            item.subtext = "Enter a query in the form of \"&lt;srclang&gt; &lt;dstlang&gt; &lt;text&gt;\""
-            return item
+            return
 
         result = Dict.translate(txt, src, dst)
         items = []
-        for input_word, output_word in result.translation_tuples:
+        for idx, (input_word, output_word) in enumerate(result.translation_tuples):
             # critical(input_word + " | " + output_word)
             # Select correct value as translation
             # Dict.cc can only do <any language> <-> German or English
@@ -214,23 +238,40 @@ def handleQuery(query):
             else:
                 inp, output = error_text
 
-            item = Item(id=__title__, icon=iconPath, completion=query.rawString)
-            item.text = output
-            item.subtext = "%s->%s translation of '%s'" % (src, dst, inp)
-            item.addAction(ClipAction("Copy translation to clipboard", output))
-            items.append(item)
+            items.append(
+                albert.Item(
+                    id=f"translation_{idx}",
+                    text=output,
+                    subtext=f"{src}->{dst} translation of '{inp}'",
+                    icon=[iconPath],
+                    actions=[
+                        albert.Action("translation_to_clipboard", "Copy translation to clipboard", lambda: setClipboardText(output))
+                    ]
+                )
+            )
 
-        # If there where no results
+        # If there were no results
         if len(items) == 0:
-            item = Item(id=__title__, icon=iconPath, completion=query.rawString)
-            item.text = "No results found!"
-            items.append(item)
+            items.append(
+                albert.Item(
+                    id="no_results",
+                    text="No results found!",
+                    icon=[iconPath]
+                )
+            )
         else:
             # Add URL entry
-            item = Item(id=__title__, icon=iconPath, completion=query.rawString)
-            item.addAction(UrlAction("Open dict.cc", result.request_url))
-            item.text = "Show all results (opens browser)"
-            item.subtext = "Tip: You can scroll Alberts result list with your arrow keys to show more results."
-            items.insert(0, item)
+            item = items.insert(
+                0,
+                albert.Item(
+                    id="open_dictcc",
+                    icon=[iconPath],
+                    text="Show all results (opens browser)",
+                    subtext="Tip: You can scroll Alberts result list with your arrow keys to show more results.",
+                    actions=[
+                        albert.Action("open", "Open dict.cc", lambda: openUrl(result.request_url))
+                    ]
+                )
+            )
 
-        return items
+        query.add(items)
