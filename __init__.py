@@ -15,17 +15,18 @@ import albert
 
 from bs4 import BeautifulSoup
 
-md_iid = "0.5"
+md_iid = "1.0"
 md_version = "0.5"
 md_name = "Dict.cc Dictionary Lookups"
 md_description = "Look up words in the dict.cc dictionary"
 md_maintainers = "Peter Oettig"
 md_lib_dependencies = ["beautifulsoup4"]
 
-iconPath = f"{os.path.dirname(__file__)}/icon.png"
-albert.info(iconPath)
-if not os.path.isfile(iconPath):
-    iconPath = ":python_module"
+icon = f"{os.path.dirname(__file__)}/icon.png"
+if not os.path.isfile(icon):
+    icon = [":python_module"]
+else:
+    icon = [icon]
 
 error_text = "Something went wrong. Please report your query to my developer via a Git Issue!"
 
@@ -146,7 +147,7 @@ def resolve(from_lang, to_lang, input_word, output_word, reference, is_source):
     return inp, output
 
 
-class Plugin(albert.QueryHandler):
+class Plugin(albert.TriggerQueryHandler):
     def id(self):
         return __name__
 
@@ -162,7 +163,7 @@ class Plugin(albert.QueryHandler):
     def defaultTrigger(self):
         return "cc "
 
-    def handleQuery(self, query):
+    def handleTriggerQuery(self, query):
         fields = query.string.split()
         if len(fields) == 1:
             src = "de"
@@ -192,7 +193,7 @@ class Plugin(albert.QueryHandler):
                     query.add(
                         albert.Item(
                             id="unsupported_lang_combination",
-                            icon=[iconPath],
+                            icon=icon,
                             text="Unsupported language combination!",
                             subtext="One language must be one of ['en', 'de']."
                         )
@@ -202,7 +203,7 @@ class Plugin(albert.QueryHandler):
                     query.add(
                         albert.Item(
                             id="unsupported_language",
-                            icon=[iconPath],
+                            icon=icon,
                             text="Unsupported language!",
                             subtext=f"Source and destination language must be one of {[x for x in AVAILABLE_LANGUAGES.keys()]}."
                         )
@@ -243,9 +244,9 @@ class Plugin(albert.QueryHandler):
                     id=f"translation_{idx}",
                     text=output,
                     subtext=f"{src}->{dst} translation of '{inp}'",
-                    icon=[iconPath],
+                    icon=icon,
                     actions=[
-                        albert.Action("translation_to_clipboard", "Copy translation to clipboard", lambda: setClipboardText(output))
+                        albert.Action("translation_to_clipboard", "Copy translation to clipboard", lambda out=output: albert.setClipboardText(out))
                     ]
                 )
             )
@@ -256,7 +257,7 @@ class Plugin(albert.QueryHandler):
                 albert.Item(
                     id="no_results",
                     text="No results found!",
-                    icon=[iconPath]
+                    icon=icon
                 )
             )
         else:
@@ -265,7 +266,7 @@ class Plugin(albert.QueryHandler):
                 0,
                 albert.Item(
                     id="open_dictcc",
-                    icon=[iconPath],
+                    icon=icon,
                     text="Show all results (opens browser)",
                     subtext="Tip: You can scroll Alberts result list with your arrow keys to show more results.",
                     actions=[
