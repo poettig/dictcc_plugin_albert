@@ -15,8 +15,8 @@ import albert
 
 from bs4 import BeautifulSoup
 
-md_iid = "1.0"
-md_version = "0.5"
+md_iid = "2.0"
+md_version = "0.6"
 md_name = "Dict.cc Dictionary Lookups"
 md_description = "Look up words in the dict.cc dictionary"
 md_maintainers = "Peter Oettig"
@@ -26,7 +26,7 @@ icon = f"{os.path.dirname(__file__)}/icon.png"
 if not os.path.isfile(icon):
     icon = [":python_module"]
 else:
-    icon = [icon]
+    icon = [f"file:{icon}"]
 
 error_text = "Something went wrong. Please report your query to my developer via a Git Issue!"
 
@@ -147,7 +147,17 @@ def resolve(from_lang, to_lang, input_word, output_word, reference, is_source):
     return inp, output
 
 
-class Plugin(albert.TriggerQueryHandler):
+class Plugin(albert.PluginInstance, albert.TriggerQueryHandler):
+    def __init__(self):
+        albert.TriggerQueryHandler.__init__(
+            self,
+            id=md_id,
+            name=md_name,
+            description=md_description,
+            defaultTrigger='cc '
+        )
+        albert.PluginInstance.__init__(self, extensions=[self])
+
     def id(self):
         return __name__
 
@@ -184,16 +194,16 @@ class Plugin(albert.TriggerQueryHandler):
                 txt = " ".join(fields[2:])
 
                 # If neither source nor destination are valid languages, assume that it is a standard case with
-                # multiple words (cc kinder erziehen)
+                # multiple words. This is important if there is a two-word translation request, e.g. 'cc hello world'
                 if src not in AVAILABLE_LANGUAGES and dst not in AVAILABLE_LANGUAGES:
                     src = "de"
                     dst = "en"
                     txt = " ".join(fields)
                 elif src not in ["de", "en"] and dst not in ["de", "en"]:
                     query.add(
-                        albert.Item(
+                        albert.StandardItem(
                             id="unsupported_lang_combination",
-                            icon=icon,
+                            iconUrls=icon,
                             text="Unsupported language combination!",
                             subtext="One language must be one of ['en', 'de']."
                         )
@@ -201,9 +211,9 @@ class Plugin(albert.TriggerQueryHandler):
                     return
                 elif src not in AVAILABLE_LANGUAGES or dst not in AVAILABLE_LANGUAGES:
                     query.add(
-                        albert.Item(
+                        albert.StandardItem(
                             id="unsupported_language",
-                            icon=icon,
+                            iconUrls=icon,
                             text="Unsupported language!",
                             subtext=f"Source and destination language must be one of {[x for x in AVAILABLE_LANGUAGES.keys()]}."
                         )
@@ -240,13 +250,17 @@ class Plugin(albert.TriggerQueryHandler):
                 inp, output = error_text
 
             items.append(
-                albert.Item(
+                albert.StandardItem(
                     id=f"translation_{idx}",
                     text=output,
                     subtext=f"{src}->{dst} translation of '{inp}'",
-                    icon=icon,
+                    iconUrls=icon,
                     actions=[
-                        albert.Action("translation_to_clipboard", "Copy translation to clipboard", lambda out=output: albert.setClipboardText(out))
+                        albert.Action(
+                            "translation_to_clipboard",
+                            "Copy translation to clipboard",
+                            lambda out=output: albert.setClipboardText(out)
+                        )
                     ]
                 )
             )
@@ -254,23 +268,23 @@ class Plugin(albert.TriggerQueryHandler):
         # If there were no results
         if len(items) == 0:
             items.append(
-                albert.Item(
+                albert.StandardItem(
                     id="no_results",
                     text="No results found!",
-                    icon=icon
+                    iconUrls=icon
                 )
             )
         else:
             # Add URL entry
             item = items.insert(
                 0,
-                albert.Item(
+                albert.StandardItem(
                     id="open_dictcc",
-                    icon=icon,
+                    iconUrls=icon,
                     text="Show all results (opens browser)",
                     subtext="Tip: You can scroll Alberts result list with your arrow keys to show more results.",
                     actions=[
-                        albert.Action("open", "Open dict.cc", lambda: openUrl(result.request_url))
+                        albert.Action("open", "Open dict.cc", lambda: albert.openUrl(result.request_url))
                     ]
                 )
             )
