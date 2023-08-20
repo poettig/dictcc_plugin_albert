@@ -154,24 +154,10 @@ class Plugin(albert.PluginInstance, albert.TriggerQueryHandler):
             id=md_id,
             name=md_name,
             description=md_description,
+            synopsis="<srclang> <dstlang> <text>",
             defaultTrigger='cc '
         )
         albert.PluginInstance.__init__(self, extensions=[self])
-
-    def id(self):
-        return __name__
-
-    def name(self):
-        return md_name
-
-    def description(self):
-        return md_description
-
-    def synopsis(self):
-        return "<srclang> <dstlang> <text>"
-
-    def defaultTrigger(self):
-        return "cc "
 
     def handleTriggerQuery(self, query):
         fields = query.string.split()
