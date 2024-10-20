@@ -16,11 +16,11 @@ import albert
 from bs4 import BeautifulSoup
 
 md_iid = "2.0"
-md_version = "0.6"
+md_version = "0.7"
 md_name = "Dict.cc Dictionary Lookups"
 md_description = "Look up words in the dict.cc dictionary"
 md_maintainers = "Peter Oettig"
-md_lib_dependencies = ["beautifulsoup4"]
+md_lib_dependencies = ["requests", "beautifulsoup4"]
 
 icon = f"{os.path.dirname(__file__)}/icon.png"
 if not os.path.isfile(icon):
