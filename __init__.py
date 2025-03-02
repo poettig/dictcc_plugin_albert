@@ -1,5 +1,3 @@
-# -*- coding: utf-8 -*-
-
 """
 Translate text using dict.cc via dict.cc.py.
 
@@ -9,10 +7,10 @@ Usage: cc <src lang> <dest lang> <text>
 Example: cc en fr hello
 """
 
-import os
-import requests
-import albert
+import pathlib
 
+import albert
+import requests
 from bs4 import BeautifulSoup
 
 md_iid = "3.0"
@@ -22,11 +20,8 @@ md_description = "Look up words in the dict.cc dictionary"
 md_maintainers = "Peter Oettig"
 md_lib_dependencies = ["requests", "beautifulsoup4"]
 
-icon = f"{os.path.dirname(__file__)}/icon.png"
-if not os.path.isfile(icon):
-    icon = [":python_module"]
-else:
-    icon = [f"file:{icon}"]
+icon = f"{pathlib.Path(__file__).parent}/icon.png"
+icon = [":python_module"] if not pathlib.Path(icon).is_file() else [f"file:{icon}"]
 
 error_text = "Something went wrong. Please report your query to my developer via a Git Issue!"
 
@@ -41,33 +36,37 @@ AVAILABLE_LANGUAGES = {
     "ro": "romanian",
     "it": "italian",
     "pt": "portuguese",
-    "ru": "russian"
+    "ru": "russian",
 }
 
 
 class UnavailableLanguageError(Exception):
-    def __str__(self):
+    def __str__(self) -> str:
         return f"Languages have to be in the following list: {', '.join(AVAILABLE_LANGUAGES.keys())}"
 
 
-class Result(object):
-    def __init__(self, from_lang=None, to_lang=None, translation_tuples=None, request_url=None):
+class Result:
+    def __init__(
+        self,
+        from_lang: str | None = None,
+        to_lang: str | None = None,
+        translation_tuples: list[tuple] | None = None,
+        request_url: str | None = None,
+    ) -> None:
         self.from_lang = from_lang
         self.to_lang = to_lang
-        self.translation_tuples = list(translation_tuples) \
-            if translation_tuples else []
+        self.translation_tuples = list(translation_tuples) if translation_tuples else []
         self.request_url = request_url
 
     @property
-    def n_results(self):
+    def n_results(self) -> int:
         return len(self.translation_tuples)
 
 
-class Dict(object):
+class Dict:
     @classmethod
-    def translate(cls, word, from_language, to_language):
-        if any(map(lambda l: l.lower() not in AVAILABLE_LANGUAGES.keys(),
-                   [from_language, to_language])):
+    def translate(cls, word: str, from_language: str, to_language: str) -> Result:
+        if any(language.lower() not in AVAILABLE_LANGUAGES for language in [from_language, to_language]):
             raise UnavailableLanguageError
 
         response = cls._get_response(word, from_language, to_language)
@@ -78,17 +77,17 @@ class Dict(object):
         return result
 
     @classmethod
-    def _get_response(cls, word, from_language, to_language):
-        res = requests.get(
+    def _get_response(cls, word: str, from_language: str, to_language: str) -> requests.Response:
+        return requests.get(
             url="https://" + from_language.lower() + "-" + to_language.lower() + ".dict.cc",
             params={"s": word.encode("utf-8")},
-            headers={'User-agent': 'Mozilla/5.0 (Windows NT 6.3; WOW64; rv:30.0) Gecko/20100101 Firefox/30.0'}
+            headers={"User-agent": "Mozilla/5.0 (Windows NT 6.3; WOW64; rv:30.0) Gecko/20100101 Firefox/30.0"},
+            timeout=5,
         )
-        return res
 
     # Quick and dirty: find javascript arrays for input/output words on response body
     @classmethod
-    def _parse_response(cls, response_body):
+    def _parse_response(cls, response_body: str) -> Result:
         soup = BeautifulSoup(response_body, "html.parser")
 
         suggestions = [tds.find_all("a") for tds in soup.find_all("td", class_="td3nl")]
@@ -100,55 +99,61 @@ class Dict(object):
             return Result(
                 from_lang=languages[0],
                 to_lang=languages[1],
-                translation_tuples=zip(
-                    [e.string for e in suggestions[0]],
-                    [e.string for e in suggestions[1]]
+                translation_tuples=list(
+                    zip([e.string for e in suggestions[0]], [e.string for e in suggestions[1]], strict=False)
                 ),
             )
 
-        translations = [tds.find_all("a") for tds in soup.find_all("td", class_="td7nl", attrs={'dir': "ltr"})]
+        translations = [tds.find_all("a") for tds in soup.find_all("td", class_="td7nl", attrs={"dir": "ltr"})]
         if len(translations) >= 2:
-            languages = [next(lang.strings) for lang in soup.find_all("td", class_="td2", attrs={'dir': "ltr"})]
+            languages = [next(lang.strings) for lang in soup.find_all("td", class_="td2", attrs={"dir": "ltr"})]
             if len(languages) != 2:
                 raise Exception("dict.cc results page layout change, please raise an issue.")
 
             return Result(
                 from_lang=languages[0],
                 to_lang=languages[1],
-                translation_tuples=zip(
-                    [" ".join(map(lambda e: " ".join(e.strings), r)) for r in translations[0:-1:2]],
-                    [" ".join(map(lambda e: e.string if e.string else "".join(e.strings), r)) for r in
-                     translations[1:-1:2]]
+                translation_tuples=list(
+                    zip(
+                        [" ".join(" ".join(e.strings) for e in r) for r in translations[0:-1:2]],
+                        [
+                            " ".join(e.string if e.string else "".join(e.strings) for e in r)
+                            for r in translations[1:-1:2]
+                        ],
+                        strict=False,
+                    )
                 ),
             )
 
         return Result()
 
 
-def resolve(from_lang, to_lang, input_word, output_word, reference, is_source):
+def resolve(
+    from_lang: str, to_lang: str, input_word: str, output_word: str, reference: str, is_source: bool
+) -> tuple[str | None, str]:
     if reference in from_lang:
         if is_source:
-            inp = input_word
-            output = output_word
+            result_input_word = input_word
+            result_output_word = output_word
         else:
-            inp = output_word
-            output = input_word
+            result_input_word = output_word
+            result_output_word = input_word
     elif reference in to_lang:
         if is_source:
-            inp = output_word
-            output = input_word
+            result_input_word = output_word
+            result_output_word = input_word
         else:
-            inp = input_word
-            output = output_word
+            result_input_word = input_word
+            result_output_word = output_word
     else:
-        inp = None
-        output = error_text
+        result_input_word = None
+        result_output_word = error_text
 
-    return inp, output
+    return result_input_word, result_output_word
 
 
 class Plugin(albert.PluginInstance, albert.TriggerQueryHandler):
-    def __init__(self):
+    def __init__(self) -> None:
         albert.PluginInstance.__init__(self)
         albert.TriggerQueryHandler.__init__(
             self,
@@ -157,7 +162,7 @@ class Plugin(albert.PluginInstance, albert.TriggerQueryHandler):
     def defaultTrigger(self) -> str:
         return "cc "
 
-    def handleTriggerQuery(self, query):
+    def handleTriggerQuery(self, query) -> None:
         fields = query.string.split()
         if len(fields) == 1:
             src = "de"
@@ -189,7 +194,7 @@ class Plugin(albert.PluginInstance, albert.TriggerQueryHandler):
                             id="unsupported_lang_combination",
                             iconUrls=icon,
                             text="Unsupported language combination!",
-                            subtext="One language must be one of ['en', 'de']."
+                            subtext="One language must be one of ['en', 'de'].",
                         )
                     )
                     return
@@ -199,7 +204,7 @@ class Plugin(albert.PluginInstance, albert.TriggerQueryHandler):
                             id="unsupported_language",
                             iconUrls=icon,
                             text="Unsupported language!",
-                            subtext=f"Source and destination language must be one of {[x for x in AVAILABLE_LANGUAGES.keys()]}."
+                            subtext=f"Source and destination language must be one of {list(AVAILABLE_LANGUAGES)}.",
                         )
                     )
                     return
@@ -243,34 +248,26 @@ class Plugin(albert.PluginInstance, albert.TriggerQueryHandler):
                         albert.Action(
                             "translation_to_clipboard",
                             "Copy translation to clipboard",
-                            lambda out=output: albert.setClipboardText(out)
+                            lambda out=output: albert.setClipboardText(out),
                         )
-                    ]
+                    ],
                 )
             )
 
         # If there were no results
         if len(items) == 0:
-            items.append(
-                albert.StandardItem(
-                    id="no_results",
-                    text="No results found!",
-                    iconUrls=icon
-                )
-            )
+            items.append(albert.StandardItem(id="no_results", text="No results found!", iconUrls=icon))
         else:
             # Add URL entry
-            item = items.insert(
+            items.insert(
                 0,
                 albert.StandardItem(
                     id="open_dictcc",
                     iconUrls=icon,
                     text="Show all results (opens browser)",
                     subtext="Tip: You can scroll Alberts result list with your arrow keys to show more results.",
-                    actions=[
-                        albert.Action("open", "Open dict.cc", lambda: albert.openUrl(result.request_url))
-                    ]
-                )
+                    actions=[albert.Action("open", "Open dict.cc", lambda: albert.openUrl(result.request_url))],
+                ),
             )
 
         query.add(items)
