@@ -15,8 +15,8 @@ import albert
 
 from bs4 import BeautifulSoup
 
-md_iid = "2.0"
-md_version = "0.7"
+md_iid = "3.0"
+md_version = "0.9"
 md_name = "Dict.cc Dictionary Lookups"
 md_description = "Look up words in the dict.cc dictionary"
 md_maintainers = "Peter Oettig"
@@ -149,15 +149,13 @@ def resolve(from_lang, to_lang, input_word, output_word, reference, is_source):
 
 class Plugin(albert.PluginInstance, albert.TriggerQueryHandler):
     def __init__(self):
+        albert.PluginInstance.__init__(self)
         albert.TriggerQueryHandler.__init__(
             self,
-            id=md_id,
-            name=md_name,
-            description=md_description,
-            synopsis="<srclang> <dstlang> <text>",
-            defaultTrigger='cc '
         )
-        albert.PluginInstance.__init__(self, extensions=[self])
+
+    def defaultTrigger(self) -> str:
+        return "cc "
 
     def handleTriggerQuery(self, query):
         fields = query.string.split()
