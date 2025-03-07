@@ -17,7 +17,9 @@ md_iid = "3.0"
 md_version = "0.9"
 md_name = "Dict.cc Dictionary Lookups"
 md_description = "Look up words in the dict.cc dictionary"
-md_maintainers = "Peter Oettig"
+md_license = "MIT"
+md_url = "https://github.com/poettig/dictcc_plugin_albert"
+md_authors = ["@poettig"]
 md_lib_dependencies = ["requests", "beautifulsoup4"]
 
 icon = f"{pathlib.Path(__file__).parent}/icon.png"
