@@ -160,7 +160,11 @@ class Plugin(albert.PluginInstance, albert.TriggerQueryHandler):
 
     @staticmethod
     def makeIcon():
-        return albert.makeImageIcon(pathlib.Path(__file__).parent / "icon.png")
+        icon_path = pathlib.Path(__file__).parent / "icon.png"
+        if not icon_path.is_file():
+            return albert.makeThemeIcon("python_module")
+
+        return albert.makeImageIcon(icon_path)
 
     def defaultTrigger(self) -> str:
         return "cc "
