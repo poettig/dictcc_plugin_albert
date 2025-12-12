@@ -13,17 +13,14 @@ import albert
 import requests
 from bs4 import BeautifulSoup
 
-md_iid = "3.0"
-md_version = "0.9"
+md_iid = "4.0"
+md_version = "1.0.4"
 md_name = "Dict.cc Dictionary Lookups"
 md_description = "Look up words in the dict.cc dictionary"
 md_license = "MIT"
 md_url = "https://github.com/poettig/dictcc_plugin_albert"
 md_authors = ["@poettig"]
 md_lib_dependencies = ["requests", "beautifulsoup4"]
-
-icon = f"{pathlib.Path(__file__).parent}/icon.png"
-icon = [":python_module"] if not pathlib.Path(icon).is_file() else [f"file:{icon}"]
 
 error_text = "Something went wrong. Please report your query to my developer via a Git Issue!"
 
@@ -161,6 +158,10 @@ class Plugin(albert.PluginInstance, albert.TriggerQueryHandler):
             self,
         )
 
+    @staticmethod
+    def makeIcon():
+        return albert.makeImageIcon(pathlib.Path(__file__).parent / "icon.png")
+
     def defaultTrigger(self) -> str:
         return "cc "
 
@@ -194,7 +195,7 @@ class Plugin(albert.PluginInstance, albert.TriggerQueryHandler):
                     query.add(
                         albert.StandardItem(
                             id="unsupported_lang_combination",
-                            iconUrls=icon,
+                            icon_factory=Plugin.makeIcon,
                             text="Unsupported language combination!",
                             subtext="One language must be one of ['en', 'de'].",
                         )
@@ -204,7 +205,7 @@ class Plugin(albert.PluginInstance, albert.TriggerQueryHandler):
                     query.add(
                         albert.StandardItem(
                             id="unsupported_language",
-                            iconUrls=icon,
+                            icon_factory=Plugin.makeIcon,
                             text="Unsupported language!",
                             subtext=f"Source and destination language must be one of {list(AVAILABLE_LANGUAGES)}.",
                         )
@@ -245,7 +246,7 @@ class Plugin(albert.PluginInstance, albert.TriggerQueryHandler):
                     id=f"translation_{idx}",
                     text=output,
                     subtext=f"{src}->{dst} translation of '{inp}'",
-                    iconUrls=icon,
+                    icon_factory=Plugin.makeIcon,
                     actions=[
                         albert.Action(
                             "translation_to_clipboard",
@@ -258,14 +259,14 @@ class Plugin(albert.PluginInstance, albert.TriggerQueryHandler):
 
         # If there were no results
         if len(items) == 0:
-            items.append(albert.StandardItem(id="no_results", text="No results found!", iconUrls=icon))
+            items.append(albert.StandardItem(id="no_results", text="No results found!", icon_factory=Plugin.makeIcon))
         else:
             # Add URL entry
             items.insert(
                 0,
                 albert.StandardItem(
                     id="open_dictcc",
-                    iconUrls=icon,
+                    icon_factory=Plugin.makeIcon,
                     text="Show all results (opens browser)",
                     subtext="Tip: You can scroll Alberts result list with your arrow keys to show more results.",
                     actions=[albert.Action("open", "Open dict.cc", lambda: albert.openUrl(result.request_url))],
