@@ -8,13 +8,15 @@ Example: cc en fr hello
 """
 
 import pathlib
+from collections.abc import Generator
+from typing import Any
 
 import albert
 import requests
 from bs4 import BeautifulSoup
 
-md_iid = "4.0"
-md_version = "1.0.4"
+md_iid = "5.0"
+md_version = "1.0.5"
 md_name = "Dict.cc Dictionary Lookups"
 md_description = "Look up words in the dict.cc dictionary"
 md_license = "MIT"
@@ -151,10 +153,10 @@ def resolve(
     return result_input_word, result_output_word
 
 
-class Plugin(albert.PluginInstance, albert.TriggerQueryHandler):
+class Plugin(albert.PluginInstance, albert.GeneratorQueryHandler):
     def __init__(self) -> None:
         albert.PluginInstance.__init__(self)
-        albert.TriggerQueryHandler.__init__(
+        albert.GeneratorQueryHandler.__init__(
             self,
         )
 
@@ -162,15 +164,16 @@ class Plugin(albert.PluginInstance, albert.TriggerQueryHandler):
     def makeIcon():
         icon_path = pathlib.Path(__file__).parent / "icon.png"
         if not icon_path.is_file():
-            return albert.makeThemeIcon("python_module")
+            return albert.Icon.theme("python_module")
 
-        return albert.makeImageIcon(icon_path)
+        return albert.Icon.image(icon_path)
 
     def defaultTrigger(self) -> str:
         return "cc "
 
-    def handleTriggerQuery(self, query) -> None:
-        fields = query.string.split()
+    def items(self, ctx) -> Generator[Any, Any, None]:
+        result = []
+        fields = ctx.query.split()
         if len(fields) == 1:
             src = "de"
             dst = "en"
@@ -196,24 +199,20 @@ class Plugin(albert.PluginInstance, albert.TriggerQueryHandler):
                     dst = "en"
                     txt = " ".join(fields)
                 elif src not in ["de", "en"] and dst not in ["de", "en"]:
-                    query.add(
-                        albert.StandardItem(
-                            id="unsupported_lang_combination",
-                            icon_factory=Plugin.makeIcon,
-                            text="Unsupported language combination!",
-                            subtext="One language must be one of ['en', 'de'].",
-                        )
-                    )
+                    yield [albert.StandardItem(
+                        id="unsupported_lang_combination",
+                        icon_factory=Plugin.makeIcon,
+                        text="Unsupported language combination!",
+                        subtext="One language must be one of en, de.",
+                    )]
                     return
                 elif src not in AVAILABLE_LANGUAGES or dst not in AVAILABLE_LANGUAGES:
-                    query.add(
-                        albert.StandardItem(
-                            id="unsupported_language",
-                            icon_factory=Plugin.makeIcon,
-                            text="Unsupported language!",
-                            subtext=f"Source and destination language must be one of {list(AVAILABLE_LANGUAGES)}.",
-                        )
-                    )
+                    yield [albert.StandardItem(
+                        id="unsupported_language",
+                        icon_factory=Plugin.makeIcon,
+                        text="Unsupported language!",
+                        subtext=f"Source and destination language must be one of {', '.join(AVAILABLE_LANGUAGES)}.",
+                    )]
                     return
         else:
             return
@@ -265,16 +264,14 @@ class Plugin(albert.PluginInstance, albert.TriggerQueryHandler):
         if len(items) == 0:
             items.append(albert.StandardItem(id="no_results", text="No results found!", icon_factory=Plugin.makeIcon))
         else:
-            # Add URL entry
-            items.insert(
-                0,
-                albert.StandardItem(
+            # Yield URL entry
+            yield [albert.StandardItem(
                     id="open_dictcc",
                     icon_factory=Plugin.makeIcon,
                     text="Show all results (opens browser)",
                     subtext="Tip: You can scroll Alberts result list with your arrow keys to show more results.",
                     actions=[albert.Action("open", "Open dict.cc", lambda: albert.openUrl(result.request_url))],
-                ),
-            )
+                )]
 
-        query.add(items)
+            # Yield items
+            yield items
